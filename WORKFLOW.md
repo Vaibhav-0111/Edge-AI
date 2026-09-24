@@ -51,9 +51,9 @@ between phases.
       end-to-end.
 
 ## Phase 6 — WebSocket Backend
-- [ ] Build `backend/app/websocket/manager.py` (connection tracking,
+- [x] Build `backend/app/websocket/manager.py` (connection tracking,
       broadcast).
-- [ ] Wire `main.py` (FastAPI) to serve the WebSocket endpoint and push
+- [x] Wire `main.py` (FastAPI) to serve the WebSocket endpoint and push
       confirmed events + periodic system metrics.
 
 ## Phase 7 — Dashboard
