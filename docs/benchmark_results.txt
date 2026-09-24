@@ -1,0 +1,11 @@
+Edge AI PPE — CPU Benchmark Results
+Model: backend/models/yolov8n_ppe.onnx
+Frames: 100
+
+Preprocess: mean=5.4ms  std=0.6  min=4.4  p95=6.9  max=7.6
+Inference: mean=33.0ms  std=2.5  min=29.4  p95=36.8  max=46.0
+Postprocess: mean=0.9ms  std=0.1  min=0.7  p95=1.1  max=1.5
+Total: mean=39.3ms  std=2.9  min=35.3  p95=43.7  max=54.5
+
+Effective FPS: 25.4
+Wall-clock FPS: 24.7

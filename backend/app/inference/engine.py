@@ -237,16 +237,16 @@ class ONNXInferenceEngine:
         indices = np.array(indices).flatten()
         for idx in indices:
             # Map letterbox coords back to original frame
-            bx1 = (x1[idx] - pad_left) / scale
-            by1 = (y1[idx] - pad_top) / scale
-            bx2 = (x2[idx] - pad_left) / scale
-            by2 = (y2[idx] - pad_top) / scale
+            bx1 = float((x1[idx] - pad_left) / scale)
+            by1 = float((y1[idx] - pad_top) / scale)
+            bx2 = float((x2[idx] - pad_left) / scale)
+            by2 = float((y2[idx] - pad_top) / scale)
 
             # Clamp to frame boundaries
-            bx1 = max(0.0, min(bx1, orig_w))
-            by1 = max(0.0, min(by1, orig_h))
-            bx2 = max(0.0, min(bx2, orig_w))
-            by2 = max(0.0, min(by2, orig_h))
+            bx1 = max(0.0, min(bx1, float(orig_w)))
+            by1 = max(0.0, min(by1, float(orig_h)))
+            bx2 = max(0.0, min(bx2, float(orig_w)))
+            by2 = max(0.0, min(by2, float(orig_h)))
 
             cls_name = self.class_names.get(int(class_ids[idx]), f"cls_{class_ids[idx]}")
             detections.append(Detection(
