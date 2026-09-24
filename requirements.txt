@@ -1,0 +1,9 @@
+fastapi
+uvicorn[standard]
+websockets
+opencv-python
+onnxruntime
+ultralytics
+numpy
+pydantic
+python-multipart
