@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.pyc
+venv/
+.venv/
+*.egg-info/
+
+# Models & datasets (large binaries — never commit)
+backend/models/*.onnx
+backend/models/*.pt
+dataset/raw/*
+!dataset/raw/.gitkeep
+dataset/processed/*
+!dataset/processed/.gitkeep
+
+# Env / secrets
+.env
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
