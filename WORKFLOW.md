@@ -37,10 +37,10 @@ between phases.
       validate scoring logic in isolation.
 
 ## Phase 4 — Hazard Triage Engine
-- [ ] Build the weighted risk-score calculator
+- [x] Build the weighted risk-score calculator
       (`backend/app/hazard/engine.py`) per the table in `ARCHITECTURE.md`.
-- [ ] Build temporal confirmation (`backend/app/hazard/temporal.py`).
-- [ ] Test severity classification with fake sequences of detections.
+- [x] Build temporal confirmation (`backend/app/hazard/temporal.py`).
+- [x] Test severity classification with fake sequences of detections.
 
 ## Phase 5 — Real-Time OpenCV Pipeline
 - [ ] Wire `utils/video_source.py` → inference → association → compliance
