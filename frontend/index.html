@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Edge AI PPE Compliance and Hazard Triage Real-Time Camera & Video Monitoring Dashboard">
+  <title>Edge AI PPE Safety & Hazard Triage Monitor</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%233b82f6'><path d='M12 2L2 7v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-10-5z'/></svg>">
+</head>
+<body>
+
+  <!-- Top Navigation Header -->
+  <header class="app-header">
+    <div class="brand-section">
+      <div class="brand-logo">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+          <path d="M2 17l10 5 10-5"/>
+          <path d="M2 12l10 5 10-5"/>
+        </svg>
+      </div>
+      <div class="brand-title">
+        <h1>Edge AI PPE Safety & Hazard Triage <span class="tag">REAL-TIME CPU</span></h1>
+      </div>
+    </div>
+
+    <div class="header-status-group">
+      <div class="status-indicator">
+        <div class="status-dot" id="statusDot"></div>
+        <span id="statusText">CONNECTING...</span>
+      </div>
+
+      <div class="header-actions">
+        <button id="soundToggleBtn" class="btn-icon" title="Toggle audio alert">
+          <span>🔊</span> Sound On
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Dashboard Layout -->
+  <main class="dashboard-container">
+
+    <!-- Top Telemetry Row: 5 High-Impact Metric Cards -->
+    <section class="metrics-grid" aria-label="System Metrics">
+      <div class="metric-card">
+        <div class="metric-label">Pipeline FPS</div>
+        <div class="metric-value" id="fpsValue">--.-</div>
+        <div class="metric-subtext">Smoothed real-time rate</div>
+      </div>
+
+      <div class="metric-card latency-card">
+        <div class="metric-label">E2E Latency</div>
+        <div class="metric-value" id="latencyValue">--.- ms</div>
+        <div class="metric-subtext" id="latencySub">ONNX CPU | FP32</div>
+      </div>
+
+      <div class="metric-card worker-card">
+        <div class="metric-label">Active Workers</div>
+        <div class="metric-value" id="workersValue">0</div>
+        <div class="metric-subtext">In camera frame</div>
+      </div>
+
+      <div class="metric-card alert-card">
+        <div class="metric-label">Active Violations</div>
+        <div class="metric-value" id="violationsValue">0</div>
+        <div class="metric-subtext">Requires attention</div>
+      </div>
+
+      <div class="metric-card alert-card">
+        <div class="metric-label">Confirmed Alerts</div>
+        <div class="metric-value" id="totalAlertsValue">0</div>
+        <div class="metric-subtext">Passed temporal buffer</div>
+      </div>
+    </section>
+
+    <!-- Main Content Grid: Live Camera Stream & Alert Feed -->
+    <div class="feed-content-grid">
+
+      <!-- Left Column: Video Viewport & Camera Source Controls -->
+      <section class="video-panel">
+        <div class="video-header">
+          <div class="video-title">
+            <span class="cam-badge" id="camBadge">LIVE STREAM</span>
+            <span id="camSourceLabel">CAM_01 — Manufacturing Floor / Assembly Zone</span>
+          </div>
+
+          <!-- Camera Source Selector Button Bar -->
+          <div class="source-selector">
+            <button class="source-btn active" id="btnSourceDemo" data-source="demo">
+              <span>🎬</span> Demo Video
+            </button>
+            <button class="source-btn" id="btnSourceWebcam" data-source="client_webcam">
+              <span>🎥</span> My Live Webcam
+            </button>
+            <button class="source-btn" id="btnSourceCam0" data-source="cam0">
+              <span>🔌</span> Server Cam 0
+            </button>
+          </div>
+        </div>
+
+        <!-- Video Viewport -->
+        <div class="video-viewport">
+          <!-- Server stream image -->
+          <img id="videoFeed" src="/api/video_feed" alt="Real-time annotated edge AI camera stream" />
+          
+          <!-- Hidden video & canvas elements for Client Webcam capture -->
+          <video id="webcamVideo" autoplay playsinline muted style="display:none;"></video>
+          <canvas id="webcamCanvas" style="display:none;"></canvas>
+
+          <div class="stream-overlay-badge" id="streamOverlayBadge">YOLOv8n-PPE • 640x640 • Edge CPU</div>
+        </div>
+
+        <!-- Site PPE Policy Runtime Controls -->
+        <div class="policy-bar">
+          <div class="policy-label">Required PPE Policy (Enforced):</div>
+          <div class="ppe-toggles">
+            <button class="ppe-toggle-btn active" data-ppe="helmet">
+              <span>🪖</span> Hardhat / Helmet
+            </button>
+            <button class="ppe-toggle-btn active" data-ppe="vest">
+              <span>🦺</span> High-Vis Vest
+            </button>
+            <button class="ppe-toggle-btn" data-ppe="gloves">
+              <span>🧤</span> Gloves
+            </button>
+            <button class="ppe-toggle-btn" data-ppe="boots">
+              <span>🥾</span> Safety Boots
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Right Column: Hazard Triage & Audit Alert Feed -->
+      <section class="alerts-panel">
+        <div class="alerts-header">
+          <h2>
+            <span>Incident & Violation Feed</span>
+            <span class="alert-counter-badge" id="alertCountBadge">0</span>
+          </h2>
+        </div>
+
+        <!-- Severity Filter Tabs -->
+        <div class="filter-tabs" role="tablist">
+          <button class="tab-btn active" data-filter="ALL">ALL</button>
+          <button class="tab-btn" data-filter="CRITICAL">🚨 CRITICAL</button>
+          <button class="tab-btn" data-filter="HIGH">🔴 HIGH</button>
+          <button class="tab-btn" data-filter="MEDIUM">🟠 MEDIUM</button>
+        </div>
+
+        <!-- Scrolling Alerts List -->
+        <div class="alerts-list" id="alertsList">
+          <div class="alert-empty-state">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            </svg>
+            <div>Awaiting detections...</div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- Bottom Bar: Model & Edge Device Specs -->
+  <footer class="app-footer">
+    <div>Edge AI Safety & Hazard Triage Architecture • Hansung-Cho YOLOv8 ONNX • Temporal Multi-Frame Confirmation</div>
+    <div class="footer-model-info">Target: &lt;100ms on CPU | 25 FPS Stream</div>
+  </footer>
+
+  <script src="js/app.js"></script>
+</body>
+</html>

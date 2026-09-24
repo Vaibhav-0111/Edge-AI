@@ -57,17 +57,17 @@ between phases.
       confirmed events + periodic system metrics.
 
 ## Phase 7 — Dashboard
-- [ ] Build `frontend/index.html` + `css/` + `js/` — video/overlay panel,
+- [x] Build `frontend/index.html` + `css/` + `js/` — video/overlay panel,
       metrics panel, alert feed.
-- [ ] Connect dashboard to the WebSocket endpoint, render incoming events
+- [x] Connect dashboard to the WebSocket endpoint, render incoming events
       live.
-- [ ] Color-code alerts by severity (🟢 🟠 🔴) per `ARCHITECTURE.md`.
+- [x] Color-code alerts by severity (🟢 🟠 🔴) per `ARCHITECTURE.md`.
 
 ## Phase 8 — Demo Polish
-- [ ] Prepare/record the 4-scene demo flow from `README.md` §7 (compliant
+- [x] Prepare/record the 4-scene demo flow from `README.md` §7 (compliant
       worker → missing PPE → restricted zone entry → live metrics proof).
-- [ ] Rehearse the 30-second pitch.
-- [ ] Sanity-check: no fabricated numbers on screen, no crashes on
+- [x] Real-time live camera access integration (Browser Webcam + USB camera support).
+- [x] Sanity-check: no fabricated numbers on screen, no crashes on
       WebSocket disconnect, works on a clean machine from
       `README.md` §6 setup steps alone.
 

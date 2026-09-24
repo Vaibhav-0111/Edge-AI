@@ -2,7 +2,8 @@
 FastAPI Backend Application for Edge AI PPE Safety & Hazard Triage System.
 
 Features:
-  - WebSocket endpoint `/ws` for live alert broadcast and system telemetry
+  - Real-time Webcam inference support (client-side Browser Webcam and Server Cam)
+  - WebSocket endpoint `/ws` for live alert broadcast, telemetry, and frame streaming
   - MJPEG live stream `/api/video_feed` for instant browser video display
   - REST endpoints for system status, recent alerts, and runtime configuration
   - Background async worker processing EdgeAIPipeline in real-time
@@ -10,6 +11,7 @@ Features:
 """
 
 import asyncio
+import base64
 import logging
 import os
 import sys
@@ -18,6 +20,7 @@ from contextlib import asynccontextmanager
 from typing import Dict, List, Optional
 
 import cv2
+import numpy as np
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
@@ -38,7 +41,9 @@ logger = logging.getLogger("edge_ai.main")
 manager = ConnectionManager(max_history=100)
 pipeline: Optional[EdgeAIPipeline] = None
 latest_jpeg_frame: Optional[bytes] = None
-pipeline_running: bool = False
+pipeline_running: bool = True
+current_source_mode: str = "demo"  # "demo", "cam0", "client_webcam"
+source_handle: Optional[VideoSource] = None
 pipeline_stats: Dict[str, float] = {
     "fps": 0.0,
     "latency_ms": 0.0,
@@ -54,27 +59,67 @@ class PPEConfigRequest(BaseModel):
     required_ppe: List[str]
 
 
+class SourceChangeRequest(BaseModel):
+    source: str  # "demo", "cam0", "client_webcam"
+
+
+class ProcessFrameRequest(BaseModel):
+    image: str  # Base64 data URL
+
+
+def decode_base64_image(base64_str: str) -> Optional[np.ndarray]:
+    """Decodes a base64 string to an OpenCV BGR image."""
+    try:
+        if "," in base64_str:
+            base64_str = base64_str.split(",", 1)[1]
+        img_bytes = base64.b64decode(base64_str)
+        np_arr = np.frombuffer(img_bytes, dtype=np.uint8)
+        img = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+        return img
+    except Exception as e:
+        logger.error("Error decoding base64 image: %s", e)
+        return None
+
+
+def encode_image_base64(img: np.ndarray, quality: int = 80) -> str:
+    """Encodes an OpenCV image to base64 JPEG string."""
+    ret, buf = cv2.imencode(".jpg", img, [cv2.IMWRITE_JPEG_QUALITY, quality])
+    if ret:
+        return "data:image/jpeg;base64," + base64.b64encode(buf).decode("utf-8")
+    return ""
+
+
 async def video_pipeline_worker():
     """
     Background worker that runs the EdgeAIPipeline frame-by-frame,
     encodes JPEG frames for the video feed, and broadcasts alerts / metrics.
     """
-    global latest_jpeg_frame, pipeline_running, pipeline_stats
+    global latest_jpeg_frame, pipeline_running, pipeline_stats, current_source_mode, source_handle
 
-    # Choose video source
-    video_path = "dataset/raw/real_ppe_test.mp4"
-    if not os.path.exists(video_path):
-        video_path = "dataset/raw/demo_sample.mp4"
-
-    logger.info("Starting pipeline worker on: %s", video_path)
-    source = VideoSource(source=video_path, loop=True, max_fps=25)
-
-    pipeline_running = True
     frame_counter = 0
 
     while pipeline_running:
-        for frame_idx, frame in source.frames():
-            if not pipeline_running:
+        if current_source_mode == "client_webcam":
+            # In client webcam mode, frames are supplied directly from browser over WebSocket / API
+            await asyncio.sleep(0.05)
+            continue
+
+        if current_source_mode == "cam0":
+            source_input = 0
+            is_loop = False
+        else:
+            # Demo video
+            video_path = "dataset/raw/real_ppe_test.mp4"
+            if not os.path.exists(video_path):
+                video_path = "dataset/raw/demo_sample.mp4"
+            source_input = video_path
+            is_loop = True
+
+        logger.info("Starting pipeline worker on source: %s (mode: %s)", source_input, current_source_mode)
+        source_handle = VideoSource(source=source_input, loop=is_loop, max_fps=25)
+
+        for frame_idx, frame in source_handle.frames():
+            if not pipeline_running or current_source_mode == "client_webcam":
                 break
 
             # Process frame through full edge pipeline
@@ -100,9 +145,8 @@ async def video_pipeline_worker():
                 for alert in result.confirmed_alerts:
                     pipeline_stats["total_alerts"] += 1
                     alert_dict = alert.to_dict()
-                    alert_dict["camera"] = "CAM_01"
+                    alert_dict["camera"] = "CAM_01 (DEMO/SERVER)"
                     await manager.broadcast_alert(alert_dict)
-                    logger.info("BROADCAST ALERT: %s (Risk: %d)", alert.severity, alert.risk_score)
 
             # Broadcast telemetry / metrics at ~5Hz (every 5 frames)
             if frame_counter % 5 == 0:
@@ -120,10 +164,9 @@ async def video_pipeline_worker():
                 "metrics": result.metrics,
             })
 
-            # Cooperate with asyncio event loop
             await asyncio.sleep(0.001)
 
-        await asyncio.sleep(0.05)
+        await asyncio.sleep(0.1)
 
 
 @asynccontextmanager
@@ -136,10 +179,8 @@ async def lifespan(app: FastAPI):
         window_size=5,
         confirm_threshold=4,
     )
-    # Start video processing in background task
     task = asyncio.create_task(video_pipeline_worker())
     yield
-    # Cleanup on shutdown
     logger.info("Shutting down pipeline worker...")
     pipeline_running = False
     task.cancel()
@@ -167,14 +208,58 @@ app.add_middleware(
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
-    """Real-time WebSocket endpoint for alerts and telemetry."""
+    """Real-time WebSocket endpoint for alerts, telemetry, and live browser camera streaming."""
+    global latest_jpeg_frame, pipeline_stats
     await manager.connect(websocket)
     try:
         while True:
-            # Keepalive / incoming ping handler
             data = await websocket.receive_text()
             if data == "ping":
                 await websocket.send_text("pong")
+                continue
+
+            # Check if client sent a webcam frame
+            if data.startswith("{"):
+                try:
+                    import json
+                    payload = json.loads(data)
+                    if payload.get("type") == "client_frame":
+                        img_b64 = payload.get("image")
+                        if img_b64 and pipeline:
+                            frame = decode_base64_image(img_b64)
+                            if frame is not None:
+                                f_idx = int(pipeline_stats.get("frames_processed", 0)) + 1
+                                result = pipeline.process_frame(frame, frame_idx=f_idx, annotate=True)
+                                
+                                # Update global stats
+                                pipeline_stats["fps"] = result.metrics["fps"]
+                                pipeline_stats["latency_ms"] = result.metrics["total_latency_ms"]
+                                pipeline_stats["inference_ms"] = result.metrics["inference_ms"]
+                                pipeline_stats["frames_processed"] = f_idx
+                                pipeline_stats["active_persons"] = result.metrics["persons_detected"]
+                                pipeline_stats["active_violations"] = result.metrics["violations_active"]
+
+                                # Encode annotated image to return to client
+                                annotated_b64 = encode_image_base64(result.annotated_frame) if result.annotated_frame is not None else ""
+
+                                # Broadcast any confirmed alerts
+                                for alert in result.confirmed_alerts:
+                                    pipeline_stats["total_alerts"] += 1
+                                    alert_dict = alert.to_dict()
+                                    alert_dict["camera"] = "CAM_CLIENT_LIVE"
+                                    await manager.broadcast_alert(alert_dict)
+
+                                # Respond directly with detection result
+                                response_payload = {
+                                    "type": "frame_result",
+                                    "annotated_image": annotated_b64,
+                                    "hazards": [h.to_dict() for h in result.hazards],
+                                    "metrics": result.metrics,
+                                    "alerts": [a.to_dict() for a in result.confirmed_alerts],
+                                }
+                                await websocket.send_json(response_payload)
+                except Exception as ex:
+                    logger.error("Error processing client frame: %s", ex)
     except WebSocketDisconnect:
         await manager.disconnect(websocket)
     except Exception as e:
@@ -208,10 +293,61 @@ async def get_status():
     """System health, pipeline statistics, and performance numbers."""
     return JSONResponse({
         "status": "ONLINE" if pipeline_running else "INITIALIZING",
+        "source_mode": current_source_mode,
         "pipeline": pipeline_stats,
         "active_clients": len(manager.active_connections),
         "model": "yolov8n_ppe.onnx",
         "hardware": "Edge CPU (ONNXRuntime)",
+    })
+
+
+@app.post("/api/source/change")
+async def change_source(req: SourceChangeRequest):
+    """Switches video input between demo video, server camera (cam0), and browser webcam."""
+    global current_source_mode, source_handle
+    mode = req.source.lower()
+    if mode in ("demo", "cam0", "client_webcam"):
+        current_source_mode = mode
+        logger.info("Video source changed to: %s", current_source_mode)
+        return {"status": "ok", "source_mode": current_source_mode}
+    return JSONResponse(status_code=400, content={"error": "Invalid source mode"})
+
+
+@app.post("/api/pipeline/process_frame")
+async def process_single_frame(req: ProcessFrameRequest):
+    """Runs pipeline on a single frame sent from browser camera."""
+    global pipeline, pipeline_stats
+    if not pipeline:
+        return JSONResponse(status_code=500, content={"error": "Pipeline not initialized"})
+
+    frame = decode_base64_image(req.image)
+    if frame is None:
+        return JSONResponse(status_code=400, content={"error": "Invalid image data"})
+
+    f_idx = int(pipeline_stats.get("frames_processed", 0)) + 1
+    result = pipeline.process_frame(frame, frame_idx=f_idx, annotate=True)
+
+    pipeline_stats["fps"] = result.metrics["fps"]
+    pipeline_stats["latency_ms"] = result.metrics["total_latency_ms"]
+    pipeline_stats["inference_ms"] = result.metrics["inference_ms"]
+    pipeline_stats["frames_processed"] = f_idx
+    pipeline_stats["active_persons"] = result.metrics["persons_detected"]
+    pipeline_stats["active_violations"] = result.metrics["violations_active"]
+
+    annotated_b64 = encode_image_base64(result.annotated_frame) if result.annotated_frame is not None else ""
+
+    # Broadcast alerts
+    for alert in result.confirmed_alerts:
+        pipeline_stats["total_alerts"] += 1
+        alert_dict = alert.to_dict()
+        alert_dict["camera"] = "CAM_CLIENT_LIVE"
+        await manager.broadcast_alert(alert_dict)
+
+    return JSONResponse({
+        "annotated_image": annotated_b64,
+        "hazards": [h.to_dict() for h in result.hazards],
+        "metrics": result.metrics,
+        "alerts": [a.to_dict() for a in result.confirmed_alerts],
     })
 
 
