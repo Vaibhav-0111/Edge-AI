@@ -7,3 +7,5 @@ ultralytics
 numpy
 pydantic
 python-multipart
+
+yollov8
