@@ -22,12 +22,12 @@ between phases.
       moving on.
 
 ## Phase 2 — Inference Engine
-- [ ] Export the chosen YOLOv8 model to ONNX (`scripts/export_onnx.py`).
-- [ ] Build `backend/app/inference/` to load the ONNX model via
+- [x] Export the chosen YOLOv8 model to ONNX (`scripts/export_onnx.py`).
+- [x] Build `backend/app/inference/` to load the ONNX model via
       `onnxruntime` and run detection on a single static image.
-- [ ] Confirm output format matches the contract in `ARCHITECTURE.md`
+- [x] Confirm output format matches the contract in `ARCHITECTURE.md`
       §2.2.
-- [ ] Run `scripts/benchmark.py` to get real preprocess/inference/
+- [x] Run `scripts/benchmark.py` to get real preprocess/inference/
       postprocess timings on CPU.
 
 ## Phase 3 — Compliance Engine
