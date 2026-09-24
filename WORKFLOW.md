@@ -43,10 +43,10 @@ between phases.
 - [x] Test severity classification with fake sequences of detections.
 
 ## Phase 5 — Real-Time OpenCV Pipeline
-- [ ] Wire `utils/video_source.py` → inference → association → compliance
+- [x] Wire `utils/video_source.py` → inference → association → compliance
       → hazard → temporal confirmation into one loop processing an MP4
       file frame by frame.
-- [ ] Print/log confirmed violation events to the console first, before
+- [x] Print/log confirmed violation events to the console first, before
       adding WebSockets — confirm the full logic pipeline works
       end-to-end.
 
