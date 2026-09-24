@@ -5,20 +5,20 @@ if rough — never leave the pipeline in a broken, non-runnable state
 between phases.
 
 ## Phase 0 — Setup
-- [ ] Initialize repo, folder structure (this scaffold), `requirements.txt`,
+- [x] Initialize repo, folder structure (this scaffold), `requirements.txt`,
       `.gitignore`.
-- [ ] Confirm dev environment: Python version, OpenCV, `ultralytics`
+- [x] Confirm dev environment: Python version, OpenCV, `ultralytics`
       (YOLOv8), `onnxruntime`, `fastapi`, `uvicorn`, `websockets`.
-- [ ] Decide the demo video source (MP4 clip) to standardize testing.
+- [x] Decide the demo video source (MP4 clip) to standardize testing.
 
 ## Phase 1 — Dataset & Model Reality Check (do this FIRST — biggest risk)
-- [ ] Check whether a pretrained YOLOv8 checkpoint (e.g. a public PPE
+- [x] Check whether a pretrained YOLOv8 checkpoint (e.g. a public PPE
       detection model) already covers the required classes: person,
       helmet, vest, gloves, boots, goggles.
-- [ ] If yes → skip/minimize fine-tuning, go straight to export.
+- [x] If yes → skip/minimize fine-tuning, go straight to export.
 - [ ] If no → source a labeled PPE dataset (Roboflow Universe and similar
       public sources are a good first stop), fine-tune YOLOv8 on it.
-- [ ] Validate detection quality visually on a few sample frames before
+- [x] Validate detection quality visually on a few sample frames before
       moving on.
 
 ## Phase 2 — Inference Engine
