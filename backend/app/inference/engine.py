@@ -109,6 +109,8 @@ class ONNXInferenceEngine:
         self.iou_threshold = iou_threshold
         self.class_names = class_names or DEFAULT_CLASS_NAMES
 
+        self._ensure_model_exists(model_path)
+
         logger.info("Loading ONNX model: %s", model_path)
         self.session = ort.InferenceSession(
             model_path,
@@ -128,6 +130,49 @@ class ONNXInferenceEngine:
 
         # Warm up the session so first-frame latency is representative
         self._warmup()
+
+    def _ensure_model_exists(self, model_path: str) -> None:
+        """Automatically downloads and exports the PPE model if it does not exist locally."""
+        if os.path.exists(model_path):
+            return
+
+        os.makedirs(os.path.dirname(model_path), exist_ok=True)
+        pt_path = "backend/models/Hansung-Cho_yolov8-ppe-detection.pt"
+        if not os.path.exists(pt_path):
+            url = "https://huggingface.co/Hansung-Cho/yolov8-ppe-detection/resolve/main/best.pt"
+            logger.info("Downloading PPE model weights from Hugging Face: %s", url)
+            try:
+                import urllib.request
+                req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+                with urllib.request.urlopen(req, timeout=60) as resp, open(pt_path, "wb") as f:
+                    f.write(resp.read())
+                logger.info("Downloaded %s successfully.", pt_path)
+            except Exception as e:
+                logger.error("Failed to download model weights: %s", e)
+                raise
+
+        logger.info("Exporting %s to ONNX format...", pt_path)
+        from ultralytics import YOLO
+        import shutil
+
+        model = YOLO(pt_path)
+        exported = model.export(
+            format="onnx",
+            imgsz=self.input_w,
+            opset=17,
+            simplify=True,
+            dynamic=False,
+            half=False,
+            verbose=False,
+        )
+
+        default_output = pt_path.replace(".pt", ".onnx")
+        if default_output != model_path and os.path.exists(default_output):
+            shutil.move(default_output, model_path)
+        elif exported and str(exported) != model_path and os.path.exists(str(exported)):
+            shutil.move(str(exported), model_path)
+
+        logger.info("ONNX model ready at %s", model_path)
 
     def _warmup(self, rounds: int = 3) -> None:
         """Runs a few dummy inferences to warm up the ONNX runtime JIT."""

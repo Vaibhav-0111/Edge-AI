@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  edge-ai-ppe:
+    build: .
+    container_name: edge-ai-ppe-safety
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./backend/models:/app/backend/models
