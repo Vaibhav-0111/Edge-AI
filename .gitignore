@@ -5,11 +5,10 @@ venv/
 .venv/
 *.egg-info/
 
-# Models & datasets (large binaries — never commit)
-backend/models/*.onnx
+# PyTorch weights (heavy, use onnx instead)
 backend/models/*.pt
-dataset/raw/*
-!dataset/raw/.gitkeep
+
+# Processed datasets (intermediate / temp)
 dataset/processed/*
 !dataset/processed/.gitkeep
 

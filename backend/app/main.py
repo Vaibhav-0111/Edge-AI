@@ -375,3 +375,11 @@ async def update_required_ppe(config: PPEConfigRequest):
 frontend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "frontend"))
 if os.path.exists(frontend_dir):
     app.mount("/", StaticFiles(directory=frontend_dir, html=True), name="frontend")
+
+
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.environ.get("PORT", 8000))
+    logger.info("Starting Edge AI PPE Safety Server on 0.0.0.0:%d (PORT=%s)", port, os.environ.get("PORT"))
+    uvicorn.run("backend.app.main:app", host="0.0.0.0", port=port)
+
