@@ -16,6 +16,7 @@ Output contract per ARCHITECTURE.md §2.2:
 """
 
 import logging
+import os
 import time
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple
