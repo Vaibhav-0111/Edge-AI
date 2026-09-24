@@ -31,9 +31,9 @@ between phases.
       postprocess timings on CPU.
 
 ## Phase 3 — Compliance Engine
-- [ ] Build PPE association logic (`backend/app/compliance/association.py`).
-- [ ] Build compliance scoring (`backend/app/compliance/engine.py`).
-- [ ] Test with hand-crafted fake detections first (no model needed) to
+- [x] Build PPE association logic (`backend/app/compliance/association.py`).
+- [x] Build compliance scoring (`backend/app/compliance/engine.py`).
+- [x] Test with hand-crafted fake detections first (no model needed) to
       validate scoring logic in isolation.
 
 ## Phase 4 — Hazard Triage Engine
